@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
 
 networks:
-  finki_stack:
+  finki_stack_dev:
     name: finki_stack_dev
     driver: bridge
     # Set external to true to use an existing network
