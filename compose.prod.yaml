@@ -7,7 +7,7 @@ services:
     volumes:
       - ./mongo-data:/data/db
     networks:
-      - finki_stack_dev
+      - finki_stack
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -15,7 +15,7 @@ services:
       retries: 5
 
   analytics:
-    build: .
+    image: ghcr.io/finki-hub/finki-analytics:latest
     ports:
       - "8088:8088"
     environment:
@@ -25,12 +25,12 @@ services:
       mongo:
         condition: service_healthy
     networks:
-      - finki_stack_dev
+      - finki_stack
     restart: unless-stopped
 
 networks:
   finki_stack:
-    name: finki_stack_dev
+    name: finki_stack
     driver: bridge
     # Set external to true to use an existing network
     # external: true
