@@ -1,6 +1,30 @@
+# Python
 .venv
 .ruff_cache
 __pycache__
 *.pyc
+
+# Logs
 app.log
+
+# Git
+.gitattributes
 .gitignore
+
+# VS Code
+.vscode/
+
+# EditorConfig
+.editorconfig
+
+# Environment
+.env
+.env.*
+
+# GitHub
+*.md
+LICENSE
+.github/
+
+# MongoDB
+mongo-data/
