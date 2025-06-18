@@ -1,0 +1,36 @@
+name: finki-analytics
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    volumes:
+      - ./mongo-data:/data/db
+    networks:
+      - finki_stack_dev
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  usage-data:
+    build: .
+    ports:
+      - "8088:8088"
+    environment:
+      API_KEY: ${API_KEY}
+      MONGO_URL: ${MONGO_URL}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - finki_stack_dev
+    restart: unless-stopped
+
+networks:
+  finki_stack:
+    name: finki_stack_dev
+    driver: bridge
+    # Set external to true to use an existing network
+    # external: true
