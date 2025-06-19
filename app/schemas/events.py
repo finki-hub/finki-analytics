@@ -21,7 +21,12 @@ class UsageEvent(BaseModel):
     payload: dict[str, Any] = Field(description="Event-specific data object")
     extracted_answer: str | None = Field(
         None,
-        description="The extracted exact answer from the document content",
+        description="The extracted exact answer from the document content (for 'faq' events).",
+    )
+    identified_user_question: str | None = Field(
+        None,
+        description="The specific user question/query identified for extraction, "
+        "either direct or from message context.",
     )
 
 

@@ -13,10 +13,16 @@ from fastapi import (
 
 from app.data.connection import Database
 from app.data.db import get_db
-from app.extractors.targeted_faq_extractor import process_and_update
+from app.extractors.context_faq_extractor import (
+    perform_context_faq_extraction_and_update,
+    prepare_context_faq_data,
+)
+from app.extractors.targeted_faq_extractor import (
+    perform_direct_faq_extraction_and_update,
+    prepare_direct_faq_data,
+)
 from app.schemas.events import IngestResponse, UsageEvent
 from app.utils.auth import verify_api_key
-from app.utils.parser import get_faq_event_data
 
 db_dep = Depends(get_db)
 
@@ -34,7 +40,8 @@ router = APIRouter(
         "Accepts a `UsageEvent` JSON body, auto-generates `event_id` and "
         "`timestamp` if omitted, then persists it into the MongoDB collection "
         "named by `event_type`. Collections are created on first insert. "
-        "For 'faq' events, an answer extraction task is queued in the background."
+        "For 'faq' events, an answer extraction task is queued in the background, "
+        "using either direct user message or context analysis."
     ),
     response_model=IngestResponse,
     status_code=status.HTTP_201_CREATED,
@@ -61,10 +68,7 @@ async def ingest_event(
         event.timestamp = datetime.now(UTC)
 
     coll = db.get_collection(event.event_type)
-    doc = event.model_dump(
-        mode="json",
-        exclude_none=True,
-    )
+    doc = event.model_dump(mode="json", exclude_none=True)
 
     try:
         result = await coll.insert_one(doc)
@@ -75,20 +79,37 @@ async def ingest_event(
             detail=f"Failed to insert event: {exc}",
         ) from exc
 
-    faq_data = get_faq_event_data(event)
+    if event.event_type == "faq":
+        direct_faq_data = prepare_direct_faq_data(event)
 
-    if faq_data:
+        if direct_faq_data:
+            print(
+                f"FAQ event {event.event_id}: Direct question found. Queuing direct extraction.",
+            )
+            background_tasks.add_task(
+                perform_direct_faq_extraction_and_update,
+                db,
+                direct_faq_data,
+            )
+        else:
+            context_faq_data = await prepare_context_faq_data(event)
+
+            if context_faq_data:
+                print(
+                    f"FAQ event {event.event_id}: No direct question, but relevant message found in context. Queuing context extraction.",
+                )
+                background_tasks.add_task(
+                    perform_context_faq_extraction_and_update,
+                    db,
+                    context_faq_data,
+                )
+            else:
+                print(
+                    f"FAQ event {event.event_id}: No direct question and no relevant message found in context. Skipping extraction.",
+                )
+    else:
         print(
-            f"Queuing background extraction task for event {event.event_id} "
-            f"with question: '{faq_data['user_question'][:50]}...'",
-        )
-        background_tasks.add_task(
-            process_and_update,
-            db,
-            event.event_type,
-            event.event_id,
-            faq_data["user_question"],
-            faq_data["document_content"],
+            f"Event {event.event_id} (type: {event.event_type}): Not an FAQ event, skipping extraction logic.",
         )
 
     return IngestResponse(
