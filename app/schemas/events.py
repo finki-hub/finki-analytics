@@ -19,6 +19,10 @@ class UsageEvent(BaseModel):
         description="Optional free-form metadata",
     )
     payload: dict[str, Any] = Field(description="Event-specific data object")
+    extracted_answer: str | None = Field(
+        None,
+        description="The extracted exact answer from the document content",
+    )
 
 
 class IngestResponse(BaseModel):

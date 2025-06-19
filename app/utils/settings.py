@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     API_KEY: str = "your_api_key_here"
 
+    OPENAI_API_KEY: str = "your_openai_api_key_here"
+
     ALLOWED_ORIGINS: list[str] = ["*"]
     EXPOSE_HEADERS: list[str] = ["*"]
 

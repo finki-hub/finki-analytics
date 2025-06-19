@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     HTTPException,
     Path,
@@ -12,8 +13,10 @@ from fastapi import (
 
 from app.data.connection import Database
 from app.data.db import get_db
+from app.extractors.targeted_faq_extractor import process_and_update
 from app.schemas.events import IngestResponse, UsageEvent
 from app.utils.auth import verify_api_key
+from app.utils.parser import get_faq_event_data
 
 db_dep = Depends(get_db)
 
@@ -30,7 +33,8 @@ router = APIRouter(
     description=(
         "Accepts a `UsageEvent` JSON body, auto-generates `event_id` and "
         "`timestamp` if omitted, then persists it into the MongoDB collection "
-        "named by `event_type`. Collections are created on first insert."
+        "named by `event_type`. Collections are created on first insert. "
+        "For 'faq' events, an answer extraction task is queued in the background."
     ),
     response_model=IngestResponse,
     status_code=status.HTTP_201_CREATED,
@@ -48,6 +52,7 @@ router = APIRouter(
 )
 async def ingest_event(
     event: UsageEvent,
+    background_tasks: BackgroundTasks,
     db: Database = db_dep,
 ) -> IngestResponse:
     if not event.event_id:
@@ -56,21 +61,41 @@ async def ingest_event(
         event.timestamp = datetime.now(UTC)
 
     coll = db.get_collection(event.event_type)
-    doc = event.model_dump()
+    doc = event.model_dump(
+        mode="json",
+        exclude_none=True,
+    )
 
     try:
         result = await coll.insert_one(doc)
+        inserted_id_str = str(result.inserted_id)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to insert event: {exc}",
         ) from exc
 
+    faq_data = get_faq_event_data(event)
+
+    if faq_data:
+        print(
+            f"Queuing background extraction task for event {event.event_id} "
+            f"with question: '{faq_data['user_question'][:50]}...'",
+        )
+        background_tasks.add_task(
+            process_and_update,
+            db,
+            event.event_type,
+            event.event_id,
+            faq_data["user_question"],
+            faq_data["document_content"],
+        )
+
     return IngestResponse(
         status="ok",
         event_type=event.event_type,
         event_id=event.event_id,
-        inserted_id=str(result.inserted_id),
+        inserted_id=inserted_id_str,
     )
 
 
