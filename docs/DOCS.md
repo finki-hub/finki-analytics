@@ -34,6 +34,13 @@ Afterwards, this dataset is used to evaluate a range of models on Macedonian dat
 [The (current state of the) dataset is available here](https://docs.google.com/spreadsheets/d/1usBMdSTUL7ANRboQk5uvwf4Gh_tL_B-MDLV9kHTuF4Q/edit?usp=sharing).
 [The repository for evaluating models is available here](https://github.com/Delemangi/llms-evaluation).
 
+## Related repositories
+
+- Discord bot: [`finki-discord-bot`](https://github.com/finki-hub/finki-discord-bot)
+- RAG chat bot: [`finki-chat-bot`](https://github.com/finki-hub/finki-chat-bot)
+- Analytics (you are currently here): [`finki-analytics`](https://github.com/finki-hub/finki-analytics)
+- Macedonian LLMs evaluation: [`llms-evaluation`](https://github.com/Delemangi/llms-evaluation)
+
 ## Examples
 
 ### FAQ with correctly identified question & answer
